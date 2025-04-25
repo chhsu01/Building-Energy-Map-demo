@@ -1,0 +1,286 @@
+<!-- 基礎版：從 JSON 載入公司資料，顯示在 Google Map 上 -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>營建能量地圖 Demo</title>
+    <style>
+      #container {
+        display: flex;
+      }
+      #sidebar {
+        width: 360px;
+        min-width: 220px;
+        max-width: 600px;
+        height: 90vh;
+        overflow-y: auto;
+        overflow-x: auto;
+        background: #f7f9fa;
+        border-right: 1px solid #ddd;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.03);
+        font-size: 1rem;
+        position: absolute;
+        left: 0;
+        top: 70px;
+        z-index: 10;
+        resize: horizontal;
+      }
+      #companyList {
+        list-style: none;
+        margin: 0;
+        padding: 0 1rem 1rem 1rem;
+      }
+      #companyList li {
+        padding: 0.5em 0.5em;
+        margin-bottom: 0.3em;
+        background: #fff;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.2s;
+        border: 1px solid #e0e0e0;
+      }
+      #companyList li:hover {
+        background: #eaf6fb;
+      }
+      #map {
+        height: 90vh;
+        width: 100%;
+        margin-left: 360px;
+        transition: margin-left 0.2s;
+      }
+      #search {
+        margin: 1rem 1rem 1rem 370px;
+        padding: 0.5rem;
+        width: 200px;
+        transition: margin-left 0.2s;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="text-align:center; margin-top:1.5rem; margin-bottom:0; font-size:2.2rem; color:#2c3e50; letter-spacing:0.1em;">營建能量地圖</h1>
+    <div id="sidebar">
+      <div style="padding:0.5rem 1rem 0.5rem 1rem; cursor:ew-resize; user-select:none;">
+        <label for="sortSelect">排序依據：</label>
+        <select id="sortSelect">
+          <option value="none">-- 不排序 --</option>
+          <option value="year">最新工程實績年份</option>
+          <option value="rating">評論分數</option>
+        </select>
+        <span style="float:right; font-size:0.9em; color:#999;">⇔ 可拖曳調整寬度</span>
+      </div>
+      <ul id="companyList"></ul>
+    </div>
+    <input type="text" id="search" placeholder="搜尋公司名稱">
+    <div id="map"></div>
+
+    <script>
+      // 監聽 sidebar 寬度變化，動態調整地圖和搜尋框的 margin-left
+      function updateMapMargin() {
+        const sidebar = document.getElementById('sidebar');
+        const map = document.getElementById('map');
+        const search = document.getElementById('search');
+        const sidebarWidth = sidebar.offsetWidth;
+        map.style.marginLeft = sidebarWidth + 'px';
+        search.style.marginLeft = (sidebarWidth + 10) + 'px';
+      }
+      window.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('sidebar');
+        let prevWidth = sidebar.offsetWidth;
+        updateMapMargin();
+        // 監聽 resize 事件
+        new ResizeObserver(() => {
+          const curWidth = sidebar.offsetWidth;
+          if (curWidth !== prevWidth) {
+            updateMapMargin();
+            prevWidth = curWidth;
+          }
+        }).observe(sidebar);
+      });
+
+      let map;
+      let markers = [];
+      let companiesData = [];
+
+      let companyMarkers = [];
+      let companyInfoWindows = [];
+      let currentCompanies = [];
+
+      // 串接政府 API，取得台中市綜合營造業前 20 大公司
+      async function fetchTaiwanGovCompanies() {
+        const url = 'https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6?$format=json';
+        const res = await fetch(url);
+        const data = await res.json();
+        // 過濾台中市、綜合營造業
+        let filtered = data.filter(item =>
+          item['公司所在地縣市'] === '臺中市' &&
+          item['行業'] && item['行業'].includes('綜合營造業')
+        );
+        // 依資本額排序取前 20 筆
+        filtered = filtered
+          .map(item => ({
+            company: item['公司名稱'],
+            location: null, // 等待地理編碼
+            contact: item['公司電話'] || '',
+            staff: item['實收資本額'] || '',
+            rating: '',
+            address: item['公司所在地'] || item['公司地址'] || '',
+            // 若你有工程實績欄位可補上 projects
+          }))
+          .slice(0, 20);
+        // 地址轉經緯度（Google Geocoding API）
+        for (let i = 0; i < filtered.length; i++) {
+          const addr = '台中市' + filtered[i].address;
+          filtered[i].location = await geocodeAddress(addr);
+        }
+        // 過濾有經緯度的公司
+        return filtered.filter(c => c.location);
+      }
+
+      async function geocodeAddress(address) {
+        const apiKey = 'AIzaSyB_GEaL6VltCUiGYffjkDqkBpWh86WAC68';
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=tw&key=${apiKey}`;
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.status === 'OK') {
+            const loc = data.results[0].geometry.location;
+            return { lat: loc.lat, lng: loc.lng };
+          }
+        } catch (e) { }
+        return null;
+      }
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 24.1477, lng: 120.6736 },
+          zoom: 12,
+        });
+
+        fetchTaiwanGovCompanies()
+          .then((companies) => {
+            companiesData = companies;
+            currentCompanies = companiesData.slice();
+            renderCompanyList(currentCompanies);
+            showCompanies(currentCompanies);
+            document.getElementById("search").addEventListener("input", function () {
+              const keyword = this.value.toLowerCase();
+              const filtered = companiesData.filter(c => c.company.toLowerCase().includes(keyword));
+              currentCompanies = filtered;
+              renderCompanyList(filtered);
+              showCompanies(filtered);
+            });
+            document.getElementById("sortSelect").addEventListener("change", function () {
+              let sorted = currentCompanies.slice();
+              if (this.value === "year") {
+                sorted.sort((a, b) => {
+                  const ay = (a.projects && a.projects.length) ? Math.max(...a.projects.map(p => p.year)) : 0;
+                  const by = (b.projects && b.projects.length) ? Math.max(...b.projects.map(p => p.year)) : 0;
+                  return by - ay;
+                });
+              } else if (this.value === "rating") {
+                sorted.sort((a, b) => (parseFloat(b.rating || 0) - parseFloat(a.rating || 0)));
+              }
+              renderCompanyList(sorted);
+              showCompanies(sorted);
+            });
+          })
+          .catch(() => {
+            // 備用: 若 API 失敗則載入本地 companies.json
+            fetch("data/companies.json")
+              .then((res) => res.json())
+              .then((companies) => {
+                companiesData = companies;
+                currentCompanies = companiesData.slice();
+                renderCompanyList(currentCompanies);
+                showCompanies(currentCompanies);
+              });
+          });
+      }
+
+      function showCompanies(companies) {
+        clearMarkers();
+        companyMarkers = [];
+        companyInfoWindows = [];
+        companies.forEach((c, idx) => {
+          const marker = new google.maps.Marker({
+            position: c.location,
+            map: map,
+            title: c.company,
+          });
+          const info = new google.maps.InfoWindow({
+            content: `
+              <div><strong>${c.company}</strong></div>
+              <div>人員：${c.staff || ''}</div>
+              <div>聯絡方式：${c.contact || ''}</div>
+              <div>評價：${c.rating || '尚無'}</div>
+              ${c.projects ? `<div>工程實績：<ul style='margin:0;padding-left:1.2em;'>${c.projects.map(p => `<li>${p.name} (${p.year})</li>`).join('')}</ul></div>` : ''}
+            `,
+          });
+          marker.addListener("click", () => {
+            if (map.getZoom() > 10) {
+              info.open(map, marker);
+            } else {
+              // zoom 太小時自動關閉所有 infoWindow
+              companyInfoWindows.forEach(win => win.close());
+            }
+          });
+          companyMarkers.push(marker);
+          companyInfoWindows.push(info);
+        });
+      }
+
+      function renderCompanyList(companies) {
+        const ul = document.getElementById("companyList");
+        ul.innerHTML = "";
+        // 計算每家公司近五年工程數
+        const thisYear = new Date().getFullYear();
+        const workStats = companies.map(c => {
+          const recentProjects = (c.projects||[]).filter(p => p.year >= thisYear-4 && p.year <= thisYear);
+          const lastYearProjects = (c.projects||[]).filter(p => p.year === thisYear-1);
+          return {
+            count5: recentProjects.length,
+            count1: lastYearProjects.length
+          };
+        });
+        // 依近五年工程數量排序，決定前30%紅色、後面藍色
+        const sortedIdx = workStats.map((s,i)=>({i,count:s.count5})).sort((a,b)=>b.count-a.count).map(s=>s.i);
+        const topN = Math.ceil(companies.length*0.3);
+        const midN = Math.ceil(companies.length*0.7);
+        companies.forEach((c, idx) => {
+          const li = document.createElement("li");
+          // 強度顏色
+          let color = "#888";
+          let label = "不活躍";
+          if (workStats[idx].count1 === 0) {
+            color = "#888"; label = "不活躍";
+          } else if (sortedIdx.slice(0,topN).includes(idx)) {
+            color = "#e74c3c"; label = "搶手(滿檔)";
+          } else if (sortedIdx.slice(topN,midN).includes(idx)) {
+            color = "#3498db"; label = "有能量";
+          } else {
+            color = "#bbb"; label = "一般";
+          }
+          li.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>${c.company} <span style='font-size:0.85em;color:${color};margin-left:4px;'>(${label})</span> <span style='float:right;font-size:0.8em;color:#888;'>近五年${workStats[idx].count5}案</span>`;
+          li.title = c.company;
+          li.onclick = function () {
+            map.panTo(c.location);
+            map.setZoom(15);
+            if (map.getZoom() > 10 && companyInfoWindows[idx]) {
+              companyInfoWindows[idx].open(map, companyMarkers[idx]);
+            } else {
+              companyInfoWindows.forEach(win => win.close());
+            }
+          };
+          ul.appendChild(li);
+        });
+      }
+
+      function clearMarkers() {
+        markers.forEach((m) => m.setMap(null));
+        markers = [];
+      }
+    </script>
+    <!-- Google Map 請使用你的安全 API Key 並設限來源 -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB_GEaL6VltCUiGYffjkDqkBpWh86WAC68&callback=initMap" async defer></script>
+  </body>
+</html>
