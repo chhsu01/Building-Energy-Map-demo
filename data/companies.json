@@ -1,1 +1,119 @@
-
+[
+  {
+    "company": "台中大建設股份有限公司",
+    "location": { "lat": 24.1500, "lng": 120.6500 },
+    "contact": "04-12345678",
+    "staff": 50,
+    "rating": "4.5"
+  },
+  {
+    "company": "中市營造有限公司",
+    "location": { "lat": 24.1550, "lng": 120.6700 },
+    "contact": "04-87654321",
+    "staff": 30,
+    "rating": "4.2",
+    "projects": [
+      { "name": "台中市政大樓整修", "year": 2024 },
+      { "name": "台中捷運新站", "year": 2024 },
+      { "name": "台中公園景觀", "year": 2023 },
+      { "name": "台中科學園區", "year": 2022 }
+    ]
+  },
+  {
+    "company": "新興營造股份有限公司",
+    "location": { "lat": 24.1450, "lng": 120.6800 },
+    "contact": "04-22223333",
+    "staff": 40,
+    "rating": "4.8",
+    "projects": [
+      { "name": "台中圖書館新建", "year": 2023 },
+      { "name": "台中市立醫院改建", "year": 2022 },
+      { "name": "台中港區碼頭", "year": 2021 },
+      { "name": "台中體育場整修", "year": 2020 },
+      { "name": "台中市立游泳池", "year": 2019 }
+    ]
+  },
+  {
+    "company": "大安營造有限公司",
+    "location": { "lat": 24.1700, "lng": 120.6500 },
+    "contact": "04-11112222",
+    "staff": 25,
+    "rating": "4.1",
+    "projects": [
+      { "name": "大安區道路改善", "year": 2024 },
+      { "name": "大安國小新建", "year": 2023 }
+    ]
+  },
+  {
+    "company": "東海建設股份有限公司",
+    "location": { "lat": 24.1800, "lng": 120.6600 },
+    "contact": "04-33334444",
+    "staff": 60,
+    "rating": "4.7",
+    "projects": [
+      { "name": "東海大學體育館", "year": 2022 },
+      { "name": "東海夜市整修", "year": 2021 }
+    ]
+  },
+  {
+    "company": "西屯營造有限公司",
+    "location": { "lat": 24.1600, "lng": 120.6400 },
+    "contact": "04-55556666",
+    "staff": 35,
+    "rating": "4.0",
+    "projects": [
+      { "name": "西屯區公園", "year": 2020 }
+    ]
+  },
+  {
+    "company": "南區建設股份有限公司",
+    "location": { "lat": 24.1300, "lng": 120.6700 },
+    "contact": "04-77778888",
+    "staff": 20,
+    "rating": "3.8",
+    "projects": []
+  },
+  {
+    "company": "北屯營造股份有限公司",
+    "location": { "lat": 24.1700, "lng": 120.7000 },
+    "contact": "04-99990000",
+    "staff": 45,
+    "rating": "4.3",
+    "projects": [
+      { "name": "北屯區捷運站", "year": 2024 },
+      { "name": "北屯國中活動中心", "year": 2023 },
+      { "name": "北屯市場整建", "year": 2022 }
+    ]
+  },
+  {
+    "company": "中區營造有限公司",
+    "location": { "lat": 24.1500, "lng": 120.6800 },
+    "contact": "04-12121212",
+    "staff": 28,
+    "rating": "4.0",
+    "projects": [
+      { "name": "中區老街改造", "year": 2024 }
+    ]
+  },
+  {
+    "company": "太平建設股份有限公司",
+    "location": { "lat": 24.1200, "lng": 120.7500 },
+    "contact": "04-23232323",
+    "staff": 38,
+    "rating": "3.9",
+    "projects": [
+      { "name": "太平區社區活動中心", "year": 2022 },
+      { "name": "太平國小操場", "year": 2021 }
+    ]
+  },
+  {
+    "company": "潭子營造有限公司",
+    "location": { "lat": 24.2100, "lng": 120.7000 },
+    "contact": "04-45454545",
+    "staff": 22,
+    "rating": "4.4",
+    "projects": [
+      { "name": "潭子區水利工程", "year": 2023 }
+    ]
+  }
+]
